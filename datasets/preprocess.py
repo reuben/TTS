@@ -65,7 +65,7 @@ def mailabs(root_path, meta_files):
 
 
 def ljspeech(root_path, meta_file):
-    """Normalizes the Nancy meta data file to TTS format"""
+    """Normalizes the LJSpeech meta data file to TTS format"""
     txt_file = os.path.join(root_path, meta_file)
     items = []
     with open(txt_file, 'r') as ttf:
@@ -77,6 +77,22 @@ def ljspeech(root_path, meta_file):
     random.shuffle(items)
     return items
 
+def ttsportuguese(root_path, meta_file):
+    """Normalizes the TTS-Portuguese Corpus meta data file to TTS format"""
+    txt_file = os.path.join(root_path, meta_file)
+    items = []
+    with open(txt_file, 'r') as ttf:
+        for line in ttf:
+            cols = line.split('==')
+            file_name=os.path.basename(cols[0])
+            if int(file_name.split('-')[1].replace('.wav','')) >= 5655 and int(file_name.split('-')[1].replace('.wav',''))<=5674:
+                print('ignored file:',file_name, 'because this file is used for test (phonetically balanced sentence)')
+                continue
+            wav_file = os.path.join(root_path,cols[0])
+            text = cols[1]
+            items.append([text, wav_file])
+    random.shuffle(items)
+    return items
 
 def nancy(root_path, meta_file):
     """Normalizes the Nancy meta data file to TTS format"""

@@ -30,12 +30,9 @@ def text2phone(text, language):
     ph = phonemize(text, separator=seperator, strip=False, njobs=1, backend='espeak', language=language)
     # Replace \n with matching punctuations.
     if len(punctuations) > 0:
-        for punct in punctuations[:-1]:
-             ph = ph.replace('| |\n', '|'+punct+'| |', 1)
-        try:
-             ph = ph[:-1] + punctuations[-1]
-        except:
-             print(text)
+        #print(text,'--->',ph)
+        for punct in punctuations:
+            ph = ph.replace('| |\n', '|'+punct+'| |', 1)
     return ph
 
 
@@ -46,14 +43,14 @@ def phoneme_to_sequence(text, cleaner_names, language):
     sequence = []
     clean_text = _clean_text(text, cleaner_names)
     phonemes = text2phone(clean_text, language)
-#     print(phonemes.replace('|', ''))
+#    print(phonemes.replace('|', ''))
     if phonemes is None:
         print("!! After phoneme conversion the result is None. -- {} ".format(clean_text))
     for phoneme in phonemes.split('|'):
-        # print(word, ' -- ', phonemes_text)
         sequence += _phoneme_to_sequence(phoneme)
-    # Aeepnd EOS char
-    sequence.append(_phonemes_to_id['~'])
+    #print(clean_text, ' -- ', phonemes.replace('|', ''))
+    # Append EOS char
+    sequence.append(_phonemes_to_id['&'])
     return sequence
 
 
@@ -94,7 +91,7 @@ def text_to_sequence(text, cleaner_names):
         text = m.group(3)
 
     # Append EOS token
-    sequence.append(_symbol_to_id['~'])
+    sequence.append(_symbol_to_id['&'])
     return sequence
 
 
@@ -133,8 +130,8 @@ def _arpabet_to_sequence(text):
 
 
 def _should_keep_symbol(s):
-    return s in _symbol_to_id and s is not '_' and s is not '~'
+    return s in _symbol_to_id and s is not '_' and s is not '&'
 
 
 def _should_keep_phoneme(p):
-    return p in _phonemes_to_id and p is not '_' and p is not '~'
+    return p in _phonemes_to_id and p is not '_' and p is not '&'

@@ -8,15 +8,21 @@ through Unidecode. For other data, you can modify _characters. See TRAINING_DATA
 from utils.text import cmudict
 
 _pad = '_'
-_eos = '~'
-_characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!\'(),-.:;? '
-_punctuations = '!\'(),-.:;? '
-_phoneme_punctuations = '.!;:,?'
+_eos = '&'
+_characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZÇÃÀÁÂÊÉÍÓÔÕÚÛabcdefghijklmnopqrstuvwxyzçãàáâêéíóôõúû!(),-.:;? '
+_punctuations = '!(),-.:;? '
+_phoneme_punctuations = '.!;:,? '
 
-# TODO: include more phoneme characters for other languages.
-_phonemes = ['l','ɹ','ɜ','ɚ','k','u','ʔ','ð','ɐ','ɾ','ɑ','ɔ','b','ɛ','t','v','n','m','ʊ','ŋ','s',
-             'ʌ','o','ʃ','i','p','æ','e','a','ʒ',' ','h','ɪ','ɡ','f','r','w','ɫ','ɬ','d','x','ː',
-             'ᵻ','ə','j','θ','z','ɒ']
+# Phonemes definition
+_vowels = 'iyɨʉɯuɪʏʊeøɘəɵɤoɛœɜɞʌɔæɐaɶɑɒᵻ'
+_non_pulmonic_consonants = 'ʘɓǀɗǃʄǂɠǁʛ'
+_pulmonic_consonants = 'pbtdʈɖcɟkɡqɢʔɴŋɲɳnɱmʙrʀⱱɾɽɸβfvθðszʃʒʂʐçʝxɣχʁħʕhɦɬɮʋɹɻjɰlɭʎʟ'
+_suprasegmentals = 'ˈˌːˑ'
+_other_symbols = "ʍwɥʜʢʡɕʑɺɧ'̃' "
+_diacrilics = 'ɚ˞ɫ'
+_phonemes = sorted(list(_vowels + _non_pulmonic_consonants + _pulmonic_consonants + _suprasegmentals + _other_symbols + _diacrilics))
+
+
 
 _phonemes = sorted(list(set(_phonemes)))
 
