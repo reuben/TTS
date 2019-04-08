@@ -85,7 +85,7 @@ def ttsportuguese(root_path, meta_file):
         for line in ttf:
             line = line.replace('==','|')
             cols = line.split('|')
-            wav_file = os.path.join(root_path, 'wavs', cols[0]+'.wav')
+            wav_file = os.path.join(root_path, cols[0])
             text = cols[1]
             items.append([text, wav_file])
     random.shuffle(items)
