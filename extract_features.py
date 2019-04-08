@@ -54,29 +54,32 @@ if __name__ == "__main__":
         """ Compute spectrograms, length information """
         text = item[0]
         file_path = item[1]
-        x = ap.load_wav(file_path, ap.sample_rate)
-        file_name = os.path.basename(file_path).replace(".wav", "")
-        mel_file = file_name + "_mel"
-        mel_path = os.path.join(CACHE_PATH, 'mel', mel_file)
-        mel = ap.melspectrogram(x.astype('float32')).astype('float32')
-        np.save(mel_path, mel, allow_pickle=False)
-        mel_len = mel.shape[1]
-        wav_len = x.shape[0]
-        output = [text, file_path, mel_path+".npy", str(wav_len), str(mel_len)]
-        if not args.only_mel:
-            linear_file = file_name + "_linear"
-            linear_path = os.path.join(CACHE_PATH, 'linear', linear_file)
-            linear = ap.spectrogram(x.astype('float32')).astype('float32')
-            linear_len = linear.shape[1]
-            np.save(linear_path, linear, allow_pickle=False)
-            output.insert(3, linear_path+".npy")
-            assert mel_len == linear_len
-        if args.process_audio:
-            audio_file = file_name + "_audio"
-            audio_path = os.path.join(CACHE_PATH, 'audio', audio_file)
-            np.save(audio_path, x, allow_pickle=False)
-            del output[0]
-            output.insert(1, audio_path+".npy")
+        try:
+            x = ap.load_wav(file_path, ap.sample_rate)
+            file_name = os.path.basename(file_path).replace(".wav", "")
+            mel_file = file_name + "_mel"
+            mel_path = os.path.join(CACHE_PATH, 'mel', mel_file)
+            mel = ap.melspectrogram(x.astype('float32')).astype('float32')
+            np.save(mel_path, mel, allow_pickle=False)
+            mel_len = mel.shape[1]
+            wav_len = x.shape[0]
+            output = [text, file_path, mel_path+".npy", str(wav_len), str(mel_len)]
+            if not args.only_mel:
+                linear_file = file_name + "_linear"
+                linear_path = os.path.join(CACHE_PATH, 'linear', linear_file)
+                linear = ap.spectrogram(x.astype('float32')).astype('float32')
+                linear_len = linear.shape[1]
+                np.save(linear_path, linear, allow_pickle=False)
+                output.insert(3, linear_path+".npy")
+                assert mel_len == linear_len
+            if args.process_audio:
+                audio_file = file_name + "_audio"
+                audio_path = os.path.join(CACHE_PATH, 'audio', audio_file)
+                np.save(audio_path, x, allow_pickle=False)
+                del output[0]
+                output.insert(1, audio_path+".npy")
+        except:
+            output=None
         return output
 
 
@@ -105,7 +108,7 @@ if __name__ == "__main__":
             for item in items:
                 print(" > ", item[1])
                 r.append(extract_mel(item))
-
+        r = list(filter(None, r)) 
         # Save meta data 
         if args.cache_path is not None:
             file_path = os.path.join(CACHE_PATH, "tts_metadata_val.csv")
