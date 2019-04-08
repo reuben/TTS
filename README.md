@@ -78,15 +78,19 @@ Example datasets, we successfully applied TTS, are linked below.
 - [TWEB](http://https://www.kaggle.com/bryanpark/the-world-english-bible-speech-dataset)
 - [M-AI-Labs](http://www.caito.de/2019/01/the-m-ailabs-speech-dataset/)
 
-## Training and Fine-tuning LJ-Speech
+## Training and Fine-tuning TTS-Portuguese-Corpus
 [Click Here](https://gist.github.com/erogol/97516ad65b44dbddb8cd694953187c5b) for hands-on **Notebook example**, training LJSpeech.
 
 Split ```metadata.csv``` into train and validation subsets respectively ```metadata_train.csv``` and ```metadata_val.csv```. Note that having a validation split does not work well as oppose to other ML problems since at the validation time model generates spectrogram slices without "Teacher-Forcing" and that leads misalignment between the ground-truth and the prediction. Therefore, validation loss does not really show the model performance. Rather, you might use all data for training and check the model performance by relying on human inspection.
 
 ```
-shuf metadata.csv > metadata_shuf.csv
-head -n 12000 metadata_shuf.csv > metadata_train.csv
-tail -n 1100 metadata_shuf.csv > metadata_val.csv
+sed -n '1,3045 p' texts.csv  >  metadata_train_1-3045.csv               
+sed -n '3046,3065 p' texts.csv  > metadata_val_noshuf.csv
+sed -n '3066,3631 p' texts.csv > metadata_train_3066-3631.csv
+cat metadata_train_1-3045.csv  metadata_train_3066-3631.csv > metadata_train_noshuf.csv
+shuf metadata_train_noshuf.csv > metadata_train.csv
+shuf  metadata_val_noshuf.csv  > metadata_val.csv
+rm metadata_train_1-3045.csv  metadata_train_3066-3631.csv metadata_train_noshuf.csv metadata_val_noshuf.csv
 ```
 
 To train a new model, you need to define your own ```config.json``` file (check the example) and call with the command below.
