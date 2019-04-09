@@ -57,9 +57,6 @@ if __name__ == "__main__":
         try:
             x = ap.load_wav(file_path, ap.sample_rate)
             file_name = os.path.basename(file_path).replace(".wav", "")
-            if int(file_name.split('-')[1]) >= 5655 and int(file_name.split('-')[1])<=5674:
-                print('ignored file:',file_name, 'because this file is used for test (phonetically balanced sentence)')
-                return None
             mel_file = file_name + "_mel"
             mel_path = os.path.join(CACHE_PATH, 'mel', mel_file)
             mel = ap.melspectrogram(x.astype('float32')).astype('float32')

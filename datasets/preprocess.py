@@ -86,6 +86,10 @@ def ttsportuguese(root_path, meta_file):
             line = line.replace('==','|')
             cols = line.split('|')
             wav_file = os.path.join(root_path, cols[0])
+            file_name = os.path.basename(wav_file).replace(".wav", "")
+            if int(file_name.split('-')[1]) >= 5655 and int(file_name.split('-')[1])<=5674:
+                print('ignored file:',file_name, 'because this file is used for test (phonetically balanced sentence)')
+                continue
             text = cols[1]
             items.append([text, wav_file])
     random.shuffle(items)
