@@ -84,13 +84,13 @@ Example datasets, we successfully applied TTS, are linked below.
 Split ```metadata.csv``` into train and validation subsets respectively ```metadata_train.csv``` and ```metadata_val.csv```. Note that having a validation split does not work well as oppose to other ML problems since at the validation time model generates spectrogram slices without "Teacher-Forcing" and that leads misalignment between the ground-truth and the prediction. Therefore, validation loss does not really show the model performance. Rather, you might use all data for training and check the model performance by relying on human inspection.
 
 ```
-sed -n '1,3045 p' texts.csv  >  metadata_train_1-3045.csv               
-sed -n '3046,3065 p' texts.csv  > metadata_val_noshuf.csv
-sed -n '3066,3631 p' texts.csv > metadata_train_3066-3631.csv
-cat metadata_train_1-3045.csv  metadata_train_3066-3631.csv > metadata_train_noshuf.csv
+sed -n '1,3039 p' texts.csv  >  metadata_train_1-3039.csv               
+sed -n '3040,3059 p' texts.csv  > metadata_val_noshuf.csv
+sed -n '3060,3625 p' texts.csv > metadata_train_3060-3625.csv
+cat metadata_train_1-3039.csv  metadata_train_3060-3625.csv > metadata_train_noshuf.csv
 shuf metadata_train_noshuf.csv > metadata_train.csv
 shuf  metadata_val_noshuf.csv  > metadata_val.csv
-rm metadata_train_1-3045.csv  metadata_train_3066-3631.csv metadata_train_noshuf.csv metadata_val_noshuf.csv
+rm metadata_train_1-3039.csv  metadata_train_3060-3625.csv metadata_train_noshuf.csv metadata_val_noshuf.csv
 ```
 
 To train a new model, you need to define your own ```config.json``` file (check the example) and call with the command below.
