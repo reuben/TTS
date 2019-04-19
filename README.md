@@ -77,9 +77,9 @@ Example datasets, we successfully applied TTS, are linked below.
 - [Nancy](http://www.cstr.ed.ac.uk/projects/blizzard/2011/lessac_blizzard2011/)
 - [TWEB](http://https://www.kaggle.com/bryanpark/the-world-english-bible-speech-dataset)
 - [M-AI-Labs](http://www.caito.de/2019/01/the-m-ailabs-speech-dataset/)
-
-## Training and Fine-tuning TTS-Portuguese-Corpus
-[Click Here](https://gist.github.com/erogol/97516ad65b44dbddb8cd694953187c5b) for hands-on **Notebook example**, training LJSpeech.
+- [TTS Portuguese Corpus] (https://github.com/Edresson/TTS-Portuguese-Corpus)
+                 
+## Training with TTS-Portuguese Corpus
 
 Split ```metadata.csv``` into train and validation subsets respectively ```metadata_train.csv``` and ```metadata_val.csv```. Note that having a validation split does not work well as oppose to other ML problems since at the validation time model generates spectrogram slices without "Teacher-Forcing" and that leads misalignment between the ground-truth and the prediction. Therefore, validation loss does not really show the model performance. Rather, you might use all data for training and check the model performance by relying on human inspection.
 
