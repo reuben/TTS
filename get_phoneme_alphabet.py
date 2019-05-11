@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-
+import os
 import re
 import phonemizer
 from phonemizer.phonemize import phonemize
 from utils.text import cleaners
 from utils.text.symbols import symbols, phonemes, _phoneme_punctuations
+import codecs
 
 # Mappings from symbol to numeric ID and vice versa:
 _symbol_to_id = {s: i for i, s in enumerate(symbols)}
@@ -32,7 +33,7 @@ def text2phone(text, language):
     if len(punctuations) > 0:
         #print(text,'--->',ph)
         for punct in punctuations:
-            ph = ph.replace('| |\n', '|'+punct+'| |', 1)
+             ph = ph.replace('| |\n', '|'+punct+'| |', 1)
     return ph
 
 
@@ -48,7 +49,7 @@ def phoneme_to_sequence(text, cleaner_names, language):
         print("!! After phoneme conversion the result is None. -- {} ".format(clean_text))
     for phoneme in phonemes.split('|'):
         sequence += _phoneme_to_sequence(phoneme)
-    print(clean_text, ' -- ', phonemes.replace('|', ''))
+    #print(clean_text, ' -- ', phonemes.replace('|', ''))
     # Append EOS char
     sequence.append(_phonemes_to_id['&'])
     return sequence
@@ -122,7 +123,7 @@ def _symbols_to_sequence(symbols):
 
 
 def _phoneme_to_sequence(phonemes):
-    return [_phonemes_to_id[s] for s in list(phonemes) if _should_keep_phoneme(s)]
+    return [_phonemes_to_id[s] for s in list(phonemes)]
 
 
 def _arpabet_to_sequence(text):
@@ -135,3 +136,31 @@ def _should_keep_symbol(s):
 
 def _should_keep_phoneme(p):
     return p in _phonemes_to_id and p is not '_' and p is not '&'
+
+
+
+
+data_path = '/home/edresson/Projetos-PTI/TCC/text-dataset/App/Base/TTS-Portuguese/TTS-Portuguese-Corpus/'
+
+transcript = os.path.join(data_path, 'texts.csv')
+lines = codecs.open(transcript, 'r', 'utf-8').readlines()
+alphabet_list= [] 
+for line in lines:
+                    fname,text = line.strip().split("==")
+                    clean_text = _clean_text(text, ["phoneme_basic_cleaners"]).replace(' .','.')
+                    #ph = phoneme_to_sequence(text,["phoneme_basic_cleaners"],"pt-br")
+                    phonemes = text2phone(clean_text, "pt-br")
+                    #print(clean_text,'-->',phonemes.replace('|',''))
+                    for phoneme in phonemes.split('|'):
+                        if phoneme not in alphabet_list:
+                            print(phoneme)
+                            '''if '\n' in phoneme:
+                                print(text,'-->',phoneme,'-->',phonemes.replace('|',''))
+                                raise "Error"'''
+                            alphabet_list.append(phoneme)
+                    #print(clean_text,'---->',phonemes.replace('|', ''))
+alpha=os.path.join(data_path, 'phoneme-alphabet-espeak-backend.csv')
+alphabet = codecs.open(alpha, 'w', 'utf-8')
+print('Alfabeto:',alphabet_list)
+for i in alphabet_list:
+    alphabet.write(i)
