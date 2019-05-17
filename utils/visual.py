@@ -5,6 +5,17 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 
+
+
+
+def plot_spectrogram(linear_output, audio):
+    spectrogram = audio._denormalize(linear_output)
+    fig = plt.figure(figsize=(16, 10))
+    plt.imshow(spectrogram.T, aspect="auto", origin="lower")
+    plt.colorbar()
+    plt.tight_layout()
+    return fig
+
 def plot_alignment(alignment, info=None):
     fig, ax = plt.subplots(figsize=(16, 10))
     im = ax.imshow(
@@ -19,15 +30,19 @@ def plot_alignment(alignment, info=None):
     plt.tight_layout()
     return fig
 
-
-def plot_spectrogram(linear_output, audio):
-    spectrogram = audio._denormalize(linear_output)
-    fig = plt.figure(figsize=(16, 10))
-    plt.imshow(spectrogram.T, aspect="auto", origin="lower")
-    plt.colorbar()
+def plot_alignment_with_text(alignment,text, info=None):
+    fig, ax = plt.subplots(figsize=(16, 10))
+    im = ax.imshow(
+        alignment.T, aspect='auto', origin='lower', interpolation=None)
+    fig.colorbar(im, ax=ax)
+    xlabel = 'Decoder timestep'
+    if info is not None:
+        xlabel += '\n\n' + info
+    plt.xlabel(xlabel)
+    plt.ylabel('Encoder timestep')
+    plt.yticks(range(len(text)), list(text))
     plt.tight_layout()
     return fig
-
 
 def visualize(alignment, spectrogram, stop_tokens, text, hop_length, CONFIG, spectrogram2=None):
     if spectrogram2 is not None:
