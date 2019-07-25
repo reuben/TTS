@@ -1,4 +1,7 @@
 import torch
+import typing
+import os
+
 from torch.autograd import Variable
 from torch import nn
 from torch.nn import functional as F
@@ -63,7 +66,7 @@ class Encoder(nn.Module):
     def forward(self, x, input_lengths):
         x = self.convolutions(x)
         x = x.transpose(1, 2)
-        input_lengths = input_lengths.cpu().numpy()
+        # input_lengths = input_lengths.cpu().numpy()
         x = nn.utils.rnn.pack_padded_sequence(
             x, input_lengths, batch_first=True)
         self.lstm.flatten_parameters()
@@ -93,9 +96,15 @@ class Encoder(nn.Module):
 
 
 # adapted from https://github.com/NVIDIA/tacotron2/
-class Decoder(nn.Module):
+class Decoder(torch.jit.ScriptModule):
     # Pylint gets confused by PyTorch conventions here
     #pylint: disable=attribute-defined-outside-init
+
+    __constants__ = ['r', 'encoder_embedding_dim', 'separate_stopnet',
+                     'query_dim', 'decoder_rnn_dim', 'prenet_dim',
+                     'max_decoder_steps', 'gate_threshold', 'p_attention_dropout',
+                     'p_decoder_dropout', 'mel_channels']
+
     def __init__(self, in_features, inputs_dim, r, attn_win, attn_norm,
                  prenet_type, prenet_dropout, forward_attn, trans_agent,
                  forward_attn_mask, location_attn, separate_stopnet):
@@ -107,7 +116,7 @@ class Decoder(nn.Module):
         self.query_dim = 1024
         self.decoder_rnn_dim = 1024
         self.prenet_dim = 256
-        self.max_decoder_steps = 1000
+        self.max_decoder_steps = 2000
         self.gate_threshold = 0.5
         self.p_attention_dropout = 0.1
         self.p_decoder_dropout = 0.1
@@ -150,28 +159,37 @@ class Decoder(nn.Module):
         self.decoder_rnn_inits = nn.Embedding(1, self.decoder_rnn_dim)
         self.memory_truncated = None
 
+        if 'PYTORCH_JIT' not in os.environ or os.environ['PYTORCH_JIT'] == '1':
+            self.query = torch.jit.Attribute(torch.zeros(1, self.query_dim), torch.Tensor)
+            self.attention_rnn_cell_state = torch.jit.Attribute(torch.zeros(1, self.query_dim), torch.Tensor)
+            self.decoder_hidden = torch.jit.Attribute(torch.zeros(1, self.decoder_rnn_dim), torch.Tensor)
+            self.decoder_cell = torch.jit.Attribute(torch.zeros(1, self.decoder_rnn_dim), torch.Tensor)
+            self.context = torch.jit.Attribute(torch.zeros(1, self.encoder_embedding_dim), torch.Tensor)
+
+            self.inputs = torch.jit.Attribute(torch.zeros(1, 1, in_features), torch.Tensor)
+            self.processed_inputs = torch.jit.Attribute(self.attention.inputs_layer(self.inputs), torch.Tensor)
+            self.mask = torch.jit.Attribute(None, typing.Optional[torch.Tensor])
+
     def get_go_frame(self, inputs):
         B = inputs.size(0)
-        memory = self.go_frame_init(inputs.data.new_zeros(B).long())
+        memory = self.go_frame_init(torch.zeros(B, device=inputs.device, dtype=torch.long))
         return memory
 
     def _init_states(self, inputs, mask, keep_states=False):
+        # type: (Tensor, Optional[Tensor], bool) -> None
         B = inputs.size(0)
         # T = inputs.size(1)
 
         if not keep_states:
             self.query = self.attention_rnn_init(
-                inputs.data.new_zeros(B).long())
-            self.attention_rnn_cell_state = Variable(
-                inputs.data.new(B, self.query_dim).zero_())
+                torch.zeros(B, device=inputs.device, dtype=torch.long))
+            self.attention_rnn_cell_state = torch.zeros(B, self.query_dim, device=inputs.device, dtype=inputs.dtype)
 
             self.decoder_hidden = self.decoder_rnn_inits(
-                inputs.data.new_zeros(B).long())
-            self.decoder_cell = Variable(
-                inputs.data.new(B, self.decoder_rnn_dim).zero_())
+                torch.zeros(B, device=inputs.device, dtype=torch.long))
+            self.decoder_cell = torch.zeros(B, self.decoder_rnn_dim, device=inputs.device, dtype=inputs.dtype)
 
-            self.context = Variable(
-                inputs.data.new(B, self.encoder_embedding_dim).zero_())
+            self.context = torch.zeros(B, self.encoder_embedding_dim, device=inputs.device, dtype=inputs.dtype)
 
         self.inputs = inputs
         self.processed_inputs = self.attention.inputs_layer(inputs)
@@ -184,6 +202,7 @@ class Decoder(nn.Module):
         return memories
 
     def _parse_outputs(self, outputs, stop_tokens, alignments):
+        # type: (List[Tensor], List[Tensor], List[Tensor]) -> List[Tensor], List[Tensor], List[Tensor]
         alignments = torch.stack(alignments).transpose(0, 1)
         stop_tokens = torch.stack(stop_tokens).transpose(0, 1)
         stop_tokens = stop_tokens.contiguous()
@@ -194,8 +213,10 @@ class Decoder(nn.Module):
 
     def decode(self, memory):
         query_input = torch.cat((memory, self.context), -1)
-        self.query, self.attention_rnn_cell_state = self.attention_rnn(
+        attn_rnn_res = self.attention_rnn(
             query_input, (self.query, self.attention_rnn_cell_state))
+        self.query = attn_rnn_res[0]
+        self.attention_rnn_cell_state = attn_rnn_res[1]
         self.query = F.dropout(
             self.query, self.p_attention_dropout, self.training)
         self.attention_rnn_cell_state = F.dropout(
@@ -205,8 +226,9 @@ class Decoder(nn.Module):
                                       self.processed_inputs, self.mask)
 
         memory = torch.cat((self.query, self.context), -1)
-        self.decoder_hidden, self.decoder_cell = self.decoder_rnn(
-            memory, (self.decoder_hidden, self.decoder_cell))
+        decoder_rnn_res = self.decoder_rnn(memory, (self.decoder_hidden, self.decoder_cell))
+        self.decoder_hidden = decoder_rnn_res[0]
+        self.decoder_cell = decoder_rnn_res[1]
         self.decoder_hidden = F.dropout(self.decoder_hidden,
                                         self.p_decoder_dropout, self.training)
         self.decoder_cell = F.dropout(self.decoder_cell,
@@ -247,6 +269,7 @@ class Decoder(nn.Module):
 
         return outputs, stop_tokens, alignments
 
+    @torch.jit.script_method
     def inference(self, inputs):
         memory = self.get_go_frame(inputs)
         self._init_states(inputs, mask=None)
@@ -260,16 +283,16 @@ class Decoder(nn.Module):
         while True:
             memory = self.prenet(memory)
             mel_output, stop_token, alignment = self.decode(memory)
-            stop_token = torch.sigmoid(stop_token.data)
-            outputs += [mel_output.squeeze(1)]
-            stop_tokens += [stop_token]
-            alignments += [alignment]
+            stop_token = torch.sigmoid(stop_token)
+            outputs.append(mel_output.squeeze(1))
+            stop_tokens.append(stop_token)
+            alignments.append(alignment)
 
             stop_flags[0] = stop_flags[0] or stop_token > 0.5
             stop_flags[1] = stop_flags[1] or (alignment[0, -2:].sum() > 0.8
                                               and t > inputs.shape[1])
             stop_flags[2] = t > inputs.shape[1] * 2
-            if all(stop_flags):
+            if stop_flags[0] and stop_flags[1] and stop_flags[2]:
                 stop_count += 1
                 if stop_count > 20:
                     break

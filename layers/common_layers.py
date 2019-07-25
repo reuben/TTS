@@ -108,6 +108,11 @@ class LocationLayer(nn.Module):
 class Attention(nn.Module):
     # Pylint gets confused by PyTorch conventions here
     #pylint: disable=attribute-defined-outside-init
+
+    __constants__ = ['windowing', 'norm', 'forward_attn',
+                     'trans_agent', 'forward_attn_mask', 'location_attention',
+                     '_mask_value']
+
     def __init__(self, query_dim, embedding_dim, attention_dim,
                  location_attention, attention_location_n_filters,
                  attention_location_kernel_size, windowing, norm, forward_attn,
@@ -121,20 +126,31 @@ class Attention(nn.Module):
         if trans_agent:
             self.ta = nn.Linear(
                 query_dim + embedding_dim, 1, bias=True)
+        else:
+            self.ta = nn.Sequential()
         if location_attention:
             self.location_layer = LocationLayer(
                 attention_dim,
                 attention_location_n_filters,
                 attention_location_kernel_size,
             )
+        else:
+            self.location_layer = nn.Sequential()
         self._mask_value = -float("inf")
         self.windowing = windowing
-        self.win_idx = None
+        self.win_idx = torch.jit.Attribute(-1, int)
+        self.win_back = torch.jit.Attribute(2, int)
+        self.win_front = torch.jit.Attribute(6, int)
         self.norm = norm
         self.forward_attn = forward_attn
         self.trans_agent = trans_agent
         self.forward_attn_mask = forward_attn_mask
         self.location_attention = location_attention
+
+        self.attention_weights = torch.jit.Attribute(torch.zeros(1), torch.Tensor)
+        self.attention_weights_cum = torch.jit.Attribute(torch.zeros(1), torch.Tensor)
+        self.alpha = torch.jit.Attribute(torch.zeros(1), torch.Tensor)
+        self.u = torch.jit.Attribute(0.5 * torch.ones(1, 1), torch.Tensor)
 
     def init_win_idx(self):
         self.win_idx = -1
@@ -152,12 +168,12 @@ class Attention(nn.Module):
     def init_location_attention(self, inputs):
         B = inputs.shape[0]
         T = inputs.shape[1]
-        self.attention_weights_cum = Variable(inputs.data.new(B, T).zero_())
+        self.attention_weights_cum = torch.zeros(B, T, device=inputs.device, dtype=inputs.dtype)
 
     def init_states(self, inputs):
         B = inputs.shape[0]
         T = inputs.shape[1]
-        self.attention_weights = Variable(inputs.data.new(B, T).zero_())
+        self.attention_weights = torch.zeros(B, T, device=inputs.device, dtype=inputs.dtype)
         if self.location_attention:
             self.init_location_attention(inputs)
         if self.forward_attn:
@@ -166,7 +182,10 @@ class Attention(nn.Module):
             self.init_win_idx()
 
     def update_location_attention(self, alignments):
-        self.attention_weights_cum += alignments
+        attention_weights_cum = self.attention_weights_cum
+        if attention_weights_cum is not None:
+            attention_weights_cum += alignments
+        self.attention_weights_cum = attention_weights_cum
 
     def get_location_attention(self, query, processed_inputs):
         attention_cat = torch.cat((self.attention_weights.unsqueeze(1),
@@ -198,7 +217,7 @@ class Attention(nn.Module):
         if self.win_idx == -1:
             attention[:, 0] = attention.max()
         # Update the window
-        self.win_idx = torch.argmax(attention, 1).long()[0].item()
+        self.win_idx = int(torch.argmax(attention, 1).long()[0].item())
         return attention
 
     def apply_forward_attention(self, alignment):
@@ -226,6 +245,7 @@ class Attention(nn.Module):
         return alpha
 
     def forward(self, query, inputs, processed_inputs, mask):
+        # type: (Tensor, Tensor, Tensor, Optional[Tensor]) -> Tensor
         if self.location_attention:
             attention, _ = self.get_location_attention(
                 query, processed_inputs)
@@ -247,8 +267,8 @@ class Attention(nn.Module):
                 attention).sum(
                     dim=1, keepdim=True)
         else:
+            alignment = torch.zeros(1)
             raise ValueError("Unknown value for attention norm type")
-
         if self.location_attention:
             self.update_location_attention(alignment)
 
