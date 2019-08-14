@@ -63,6 +63,7 @@ class Encoder(nn.Module):
             bidirectional=True)
         self.rnn_state = None
 
+    @torch.jit.ignore
     def forward(self, x, input_lengths):
         x = self.convolutions(x)
         x = x.transpose(1, 2)
@@ -96,6 +97,9 @@ class Encoder(nn.Module):
 
 
 # adapted from https://github.com/NVIDIA/tacotron2/
+# This module can't use the new JIT APIs (subclass nn.Module and use torch.jit.script,
+# use type annotations for attributes), because it leads to incorrect behavior
+# from the exported model. Need to investigate it further.
 class Decoder(torch.jit.ScriptModule):
     # Pylint gets confused by PyTorch conventions here
     #pylint: disable=attribute-defined-outside-init
@@ -159,16 +163,15 @@ class Decoder(torch.jit.ScriptModule):
         self.decoder_rnn_inits = nn.Embedding(1, self.decoder_rnn_dim)
         self.memory_truncated = None
 
-        if 'PYTORCH_JIT' not in os.environ or os.environ['PYTORCH_JIT'] == '1':
-            self.query = torch.jit.Attribute(torch.zeros(1, self.query_dim), torch.Tensor)
-            self.attention_rnn_cell_state = torch.jit.Attribute(torch.zeros(1, self.query_dim), torch.Tensor)
-            self.decoder_hidden = torch.jit.Attribute(torch.zeros(1, self.decoder_rnn_dim), torch.Tensor)
-            self.decoder_cell = torch.jit.Attribute(torch.zeros(1, self.decoder_rnn_dim), torch.Tensor)
-            self.context = torch.jit.Attribute(torch.zeros(1, self.encoder_embedding_dim), torch.Tensor)
+        self.register_buffer('query', torch.zeros(1, self.query_dim))
+        self.register_buffer('attention_rnn_cell_state', torch.zeros(1, self.query_dim))
+        self.register_buffer('decoder_hidden', torch.zeros(1, self.decoder_rnn_dim))
+        self.register_buffer('decoder_cell', torch.zeros(1, self.decoder_rnn_dim))
+        self.register_buffer('context', torch.zeros(1, self.encoder_embedding_dim))
 
-            self.inputs = torch.jit.Attribute(torch.zeros(1, 1, in_features), torch.Tensor)
-            self.processed_inputs = torch.jit.Attribute(self.attention.inputs_layer(self.inputs), torch.Tensor)
-            self.mask = torch.jit.Attribute(None, typing.Optional[torch.Tensor])
+        self.register_buffer('inputs', torch.zeros(1, 1, in_features))
+        self.register_buffer('processed_inputs', self.attention.inputs_layer(self.inputs))
+        self.mask = torch.jit.Attribute(None, typing.Optional[torch.Tensor])
 
     def get_go_frame(self, inputs):
         B = inputs.size(0)
@@ -247,6 +250,7 @@ class Decoder(torch.jit.ScriptModule):
             stop_token = self.stopnet(stopnet_input)
         return decoder_output, stop_token, self.attention.attention_weights
 
+    @torch.jit.ignore
     def forward(self, inputs, memories, mask):
         memory = self.get_go_frame(inputs).unsqueeze(0)
         memories = self._reshape_memory(memories)

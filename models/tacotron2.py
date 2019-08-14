@@ -1,3 +1,5 @@
+import torch
+
 from math import sqrt
 from torch import nn
 from layers.tacotron2 import Encoder, Decoder, Postnet
@@ -30,10 +32,10 @@ class Tacotron2(nn.Module):
             self.speaker_embedding = nn.Embedding(num_speakers, 512)
             self.speaker_embedding.weight.data.normal_(0, 0.3)
         self.encoder = Encoder(512)
-        self.decoder = Decoder(512, self.n_mel_channels, r, attn_win,
+        self.decoder = torch.jit.script(Decoder(512, self.n_mel_channels, r, attn_win,
                                attn_norm, prenet_type, prenet_dropout,
                                forward_attn, trans_agent, forward_attn_mask,
-                               location_attn, separate_stopnet)
+                               location_attn, separate_stopnet))
         self.postnet = Postnet(self.n_mel_channels)
 
     @staticmethod
@@ -42,6 +44,7 @@ class Tacotron2(nn.Module):
         mel_outputs_postnet = mel_outputs_postnet.transpose(1, 2)
         return mel_outputs, mel_outputs_postnet, alignments
 
+    @torch.jit.ignore
     def forward(self, text, text_lengths, mel_specs=None, speaker_ids=None):
         # compute mask for padding
         mask = sequence_mask(text_lengths).to(text.device)
@@ -58,6 +61,7 @@ class Tacotron2(nn.Module):
         return mel_outputs, mel_outputs_postnet, alignments, stop_tokens
 
     def inference(self, text, speaker_ids=None):
+        # type: (Tensor, Optional[Tensor]) -> Tensor, Tensor, Tensor, Tensor
         embedded_inputs = self.embedding(text).transpose(1, 2)
         encoder_outputs = self.encoder.inference(embedded_inputs)
         encoder_outputs = self._add_speaker_embedding(encoder_outputs,
