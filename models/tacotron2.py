@@ -32,10 +32,11 @@ class Tacotron2(nn.Module):
             self.speaker_embedding = nn.Embedding(num_speakers, 512)
             self.speaker_embedding.weight.data.normal_(0, 0.3)
         self.encoder = Encoder(512)
-        self.decoder = torch.jit.script(Decoder(512, self.n_mel_channels, r, attn_win,
+        self.decoder = Decoder(512, self.n_mel_channels, r, attn_win,
                                attn_norm, prenet_type, prenet_dropout,
                                forward_attn, trans_agent, forward_attn_mask,
-                               location_attn, separate_stopnet))
+                               location_attn, separate_stopnet)
+        self.decoder = torch.jit.script(self.decoder)
         self.postnet = Postnet(self.n_mel_channels)
 
     @staticmethod

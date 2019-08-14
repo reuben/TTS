@@ -35,11 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import torch
 import numpy as np
 import torch.nn.functional as F
-import os
-import scipy
 
 from torch import nn
-from torch.autograd import Variable
 from torch.jit import Final
 from librosa.util import pad_center, tiny
 
@@ -161,8 +158,10 @@ class STFT(nn.Module):
             stride=self.hop_length,
             padding=0)
 
-        window_sum = window_sumsquare(magnitude.size(-1), hop_length=self.hop_length,
-            win_length=self.win_length, n_fft=self.filter_length)
+        window_sum = window_sumsquare(magnitude.size(-1),
+                                      hop_length=self.hop_length,
+                                      win_length=self.win_length,
+                                      n_fft=self.filter_length)
         # remove modulation effects
         approx_nonzero_indices = torch.nonzero(window_sum > self.tiny_fp32)[0]
         inverse_transform[:, :, approx_nonzero_indices] /= window_sum[approx_nonzero_indices]
@@ -176,7 +175,5 @@ class STFT(nn.Module):
         return inverse_transform
 
     @torch.jit.ignore
-    def forward(self, input_data):
-        self.magnitude, self.phase = self.transform(input_data)
-        reconstruction = self.inverse(self.magnitude, self.phase)
-        return reconstruction
+    def forward(self, x):
+        return x
