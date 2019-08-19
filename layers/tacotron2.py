@@ -67,7 +67,7 @@ class Encoder(nn.Module):
     def forward(self, x, input_lengths):
         x = self.convolutions(x)
         x = x.transpose(1, 2)
-        # input_lengths = input_lengths.cpu().numpy()
+        input_lengths = input_lengths.cpu().numpy()
         x = nn.utils.rnn.pack_padded_sequence(
             x, input_lengths, batch_first=True)
         self.lstm.flatten_parameters()
@@ -120,7 +120,7 @@ class Decoder(torch.jit.ScriptModule):
         self.query_dim = 1024
         self.decoder_rnn_dim = 1024
         self.prenet_dim = 256
-        self.max_decoder_steps = 2000
+        self.max_decoder_steps = 1000
         self.gate_threshold = 0.5
         self.p_attention_dropout = 0.1
         self.p_decoder_dropout = 0.1
@@ -287,7 +287,7 @@ class Decoder(torch.jit.ScriptModule):
         while True:
             memory = self.prenet(memory)
             mel_output, stop_token, alignment = self.decode(memory)
-            stop_token = torch.sigmoid(stop_token)
+            stop_token = torch.sigmoid(stop_token.data)
             outputs.append(mel_output.squeeze(1))
             stop_tokens.append(stop_token)
             alignments.append(alignment)
