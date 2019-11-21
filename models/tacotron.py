@@ -2,8 +2,8 @@
 import torch
 from torch import nn
 from math import sqrt
-from layers.tacotron import Prenet, Encoder, Decoder, PostCBHG
-from utils.generic_utils import sequence_mask
+from ..layers.tacotron import Prenet, Encoder, Decoder, PostCBHG
+from ..utils.generic_utils import sequence_mask
 
 
 class Tacotron(nn.Module):

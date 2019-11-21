@@ -1,19 +1,14 @@
 import io
 import os
-<<<<<<< HEAD
-
-import numpy as np
-import torch
-=======
 import sys
 
 import numpy as np
 import torch
 
-from models.tacotron import Tacotron
-from utils.audio import AudioProcessor
-from utils.generic_utils import load_config, setup_model
-from utils.text import phoneme_to_sequence, phonemes, symbols, text_to_sequence, sequence_to_phoneme
+from ..models.tacotron import Tacotron
+from ..utils.audio import AudioProcessor
+from ..utils.generic_utils import load_config, setup_model
+from ..utils.text import phoneme_to_sequence, phonemes, symbols, text_to_sequence, sequence_to_phoneme
 
 import re
 alphabets= "([A-Za-z])"
@@ -22,25 +17,22 @@ suffixes = "(Inc|Ltd|Jr|Sr|Co)"
 starters = "(Mr|Mrs|Ms|Dr|He\s|She\s|It\s|They\s|Their\s|Our\s|We\s|But\s|However\s|That\s|This\s|Wherever)"
 acronyms = "([A-Z][.][A-Z][.](?:[A-Z][.])?)"
 websites = "[.](com|net|org|io|gov)"
->>>>>>> dev-tacotron2
 
-from models.tacotron import Tacotron
-from utils.audio import AudioProcessor
-from utils.generic_utils import load_config
-from utils.text import phoneme_to_sequence, phonemes, symbols, text_to_sequence
 
 class Synthesizer(object):
-    def __init__(self, config):
+    def __init__(self, config_path):
         self.wavernn = None
-        self.config = config 
-        self.use_cuda = config.use_cuda
+        self.config = load_config(config_path)
+        self.use_cuda = self.config.use_cuda
         if self.use_cuda:
             assert torch.cuda.is_available(), "CUDA is not availabe on this machine."
-        self.load_tts(self.config.tts_path, self.config.tts_file, self.config.tts_config, config.use_cuda)
+        self.load_tts(config_path, self.config.tts_path, self.config.tts_file, self.config.tts_config, self.config.use_cuda)
         if self.config.wavernn_lib_path:
-            self.load_wavernn(config.wavernn_lib_path, config.wavernn_path, config.wavernn_file, config.wavernn_config, config.use_cuda)
+            self.load_wavernn(self.config.wavernn_lib_path, self.config.wavernn_path, self.config.wavernn_file, self.config.wavernn_config, self.config.use_cuda)
 
-    def load_tts(self, model_path, model_file, model_config, use_cuda):
+    def load_tts(self, config_path, model_path, model_file, model_config, use_cuda):
+        if not os.path.isabs(model_path):
+            model_path = os.path.join(os.path.dirname(config_path), model_path)
         tts_config = os.path.join(model_path, model_config)
         self.model_file = os.path.join(model_path, model_file)
         print(" > Loading TTS model ...")
