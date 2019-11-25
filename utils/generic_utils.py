@@ -12,7 +12,7 @@ import importlib
 import numpy as np
 from collections import OrderedDict
 from torch.autograd import Variable
-from utils.text import text_to_sequence
+from .text import text_to_sequence
 
 
 class AttrDict(dict):
@@ -246,7 +246,7 @@ def set_init_dict(model_dict, checkpoint, c):
 
 def setup_model(num_chars, c):
     print(" > Using model: {}".format(c.model))
-    MyModel = importlib.import_module('models.' + c.model.lower())
+    MyModel = importlib.import_module('TTS.models.' + c.model.lower())
     MyModel = getattr(MyModel, c.model)
     if c.model.lower() == "tacotron":
         model = MyModel(

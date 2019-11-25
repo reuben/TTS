@@ -3,8 +3,8 @@ import torch
 from torch.autograd import Variable
 from torch import nn
 from torch.nn import functional as F
-from layers.tacotron2 import Encoder, Decoder, Postnet
-from utils.generic_utils import sequence_mask
+from ..layers.tacotron2 import Encoder, Decoder, Postnet
+from ..utils.generic_utils import sequence_mask
 
 
 # TODO: match function arguments with tacotron

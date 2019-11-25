@@ -5,16 +5,18 @@ import torch
 import scipy
 import numpy as np
 import soundfile as sf
-from utils.text import text_to_sequence, phoneme_to_sequence
-from utils.generic_utils import load_config, setup_model
-from utils.audio import AudioProcessor
-from utils.text.symbols import phonemes, symbols
-from models.tacotron import Tacotron
-from matplotlib import pylab as plt
+
+from ..utils.text import text_to_sequence, phoneme_to_sequence
+from ..utils.generic_utils import load_config, setup_model
+from ..utils.audio import AudioProcessor
+from ..utils.text.symbols import phonemes, symbols
+from ..models.tacotron import Tacotron
 
 
 class Synthesizer(object):
-    def load_model(self, model_path, model_name, model_config, use_cuda):
+    def load_model(self, config_path, model_path, model_name, model_config, use_cuda):
+        if not os.path.isabs(model_path):
+            model_path = os.path.join(os.path.dirname(config_path), model_path)
         model_config = os.path.join(model_path, model_config)
         self.model_file = os.path.join(model_path, model_name)
         print(" > Loading model ...")

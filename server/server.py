@@ -1,20 +1,20 @@
 #!flask/bin/python
 import argparse
-from synthesizer import Synthesizer
-from utils.generic_utils import load_config
+import os
+
 from flask import Flask, Response, request, render_template, send_file
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    '-c', '--config_path', type=str, help='path to config file for training')
-args = parser.parse_args()
+from .synthesizer import Synthesizer
+from ..utils.generic_utils import load_config
 
-config = load_config(args.config_path)
 app = Flask(__name__)
-synthesizer = Synthesizer()
-synthesizer.load_model(config.model_path, config.model_name,
-                       config.model_config, config.use_cuda)
 
+if 'TTS_SERVER_CONFIG' in os.environ:
+    synthesizer = Synthesizer()
+    config_path = os.environ['TTS_SERVER_CONFIG']
+    config = load_config(config_path)
+    synthesizer.load_model(config_path, config.model_path, config.model_name,
+                           config.model_config, config.use_cuda)
 
 @app.route('/')
 def index():
@@ -30,4 +30,16 @@ def tts():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=config.port)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-c', '--config_path', type=str, help='path to server.conf configuration file')
+    args = parser.parse_args()
+
+    config = load_config(args.config_path)
+
+    synthesizer = Synthesizer()
+    synthesizer.load_model(args.config_path, config.model_path,
+                           config.model_name, config.model_config,
+                           config.use_cuda)
+
+    app.run(debug=config.debug, host='0.0.0.0', port=config.port)
