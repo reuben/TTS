@@ -2,19 +2,40 @@
 import argparse
 import os
 
-from flask import Flask, Response, request, render_template, send_file
+from flask import Flask, request, render_template, send_file
+from TTS.server.synthesizer import Synthesizer
 
-from .synthesizer import Synthesizer
-from ..utils.generic_utils import load_config
+
+def create_argparser():
+    def convert_boolean(x):
+        return x.lower() in ['true', '1', 'yes']
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--tts_checkpoint', type=str, help='path to TTS checkpoint file')
+    parser.add_argument('--tts_config', type=str, help='path to TTS config.json file')
+    parser.add_argument('--tts_speakers', type=str, help='path to JSON file containing speaker ids, if speaker ids are used in the model')
+    parser.add_argument('--port', type=int, default=5002, help='port to listen on.')
+    parser.add_argument('--use_cuda', type=convert_boolean, default=False, help='true to use CUDA.')
+    parser.add_argument('--debug', type=convert_boolean, default=False, help='true to enable Flask debug mode.')
+    return parser
+
+
+config = None
+synthesizer = None
+
+embedded_model_folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'model')
+checkpoint_file = os.path.join(embedded_model_folder, 'checkpoint.pth.tar')
+config_file = os.path.join(embedded_model_folder, 'config.json')
+
+if os.path.isfile(checkpoint_file) and os.path.isfile(config_file):
+    # Use default config with embedded model files
+    config = create_argparser().parse_args([])
+    config.tts_checkpoint = checkpoint_file
+    config.tts_config = config_file
+    synthesizer = Synthesizer(config)
+
 
 app = Flask(__name__)
-
-if 'TTS_SERVER_CONFIG' in os.environ:
-    synthesizer = Synthesizer()
-    config_path = os.environ['TTS_SERVER_CONFIG']
-    config = load_config(config_path)
-    synthesizer.load_model(config_path, config.model_path, config.model_name,
-                           config.model_config, config.use_cuda)
 
 @app.route('/')
 def index():
@@ -30,16 +51,8 @@ def tts():
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '-c', '--config_path', type=str, help='path to server.conf configuration file')
-    args = parser.parse_args()
-
-    config = load_config(args.config_path)
-
-    synthesizer = Synthesizer()
-    synthesizer.load_model(args.config_path, config.model_path,
-                           config.model_name, config.model_config,
-                           config.use_cuda)
+    if not config or not synthesizer:
+        args = create_argparser().parse_args()
+        synthesizer = Synthesizer(args)
 
     app.run(debug=config.debug, host='0.0.0.0', port=config.port)
