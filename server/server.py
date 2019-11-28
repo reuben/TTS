@@ -11,9 +11,8 @@ def create_argparser():
         return x.lower() in ['true', '1', 'yes']
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--tts_checkpoint', type=str, help='path to TTS checkpoint file')
-    parser.add_argument('--tts_config', type=str, help='path to TTS config.json file')
-    parser.add_argument('--tts_speakers', type=str, help='path to JSON file containing speaker ids, if speaker ids are used in the model')
+    parser.add_argument('--model_checkpoint', type=str, help='path to TTS checkpoint file')
+    parser.add_argument('--model_config', type=str, help='path to TTS config.json file')
     parser.add_argument('--port', type=int, default=5002, help='port to listen on.')
     parser.add_argument('--use_cuda', type=convert_boolean, default=False, help='true to use CUDA.')
     parser.add_argument('--debug', type=convert_boolean, default=False, help='true to enable Flask debug mode.')
@@ -30,8 +29,8 @@ config_file = os.path.join(embedded_model_folder, 'config.json')
 if os.path.isfile(checkpoint_file) and os.path.isfile(config_file):
     # Use default config with embedded model files
     config = create_argparser().parse_args([])
-    config.tts_checkpoint = checkpoint_file
-    config.tts_config = config_file
+    config.model_checkpoint = checkpoint_file
+    config.model_config = config_file
     synthesizer = Synthesizer(config)
 
 

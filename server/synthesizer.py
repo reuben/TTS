@@ -14,14 +14,15 @@ from ..models.tacotron import Tacotron
 
 
 class Synthesizer(object):
-    def load_model(self, config_path, model_path, model_name, model_config, use_cuda):
-        if not os.path.isabs(model_path):
-            model_path = os.path.join(os.path.dirname(config_path), model_path)
-        model_config = os.path.join(model_path, model_config)
-        self.model_file = os.path.join(model_path, model_name)
+    def __init__(self, server_config):
+        self.load_model(server_config.model_checkpoint,
+                        server_config.model_config,
+                        server_config.use_cuda)
+
+    def load_model(self, checkpoint_file, model_config, use_cuda):
         print(" > Loading model ...")
         print(" | > model config: ", model_config)
-        print(" | > model file: ", self.model_file)
+        print(" | > checkpoint file: ", checkpoint_file)
         config = load_config(model_config)
         self.config = config
         self.use_cuda = use_cuda
@@ -30,10 +31,10 @@ class Synthesizer(object):
         self.model = setup_model(num_chars, config)
         # load model state
         if use_cuda:
-            cp = torch.load(self.model_file)
+            cp = torch.load(checkpoint_file)
         else:
             cp = torch.load(
-                self.model_file, map_location=lambda storage, loc: storage)
+                checkpoint_file, map_location=lambda storage, loc: storage)
         # load the model
         self.model.load_state_dict(cp['model'])
         if use_cuda:
