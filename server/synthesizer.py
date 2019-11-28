@@ -20,24 +20,24 @@ websites = "[.](com|net|org|io|gov)"
 
 
 class Synthesizer(object):
-    def __init__(self, config_path):
+    def __init__(self, server_config):
         self.wavernn = None
-        self.config = load_config(config_path)
-        self.use_cuda = self.config.use_cuda
+        self.use_cuda = server_config.use_cuda
         if self.use_cuda:
             assert torch.cuda.is_available(), "CUDA is not availabe on this machine."
-        self.load_tts(config_path, self.config.tts_path, self.config.tts_file, self.config.tts_config, self.config.use_cuda)
-        if self.config.wavernn_lib_path:
-            self.load_wavernn(self.config.wavernn_lib_path, self.config.wavernn_path, self.config.wavernn_file, self.config.wavernn_config, self.config.use_cuda)
+        self.load_tts(server_config.tts_checkpoint,
+                     server_config.tts_config,
+                     server_config.use_cuda)
+        if server_config.wavernn_lib_path:
+            self.load_wavernn(server_config.wavernn_lib_path,
+                              server_config.wavernn_file,
+                              server_config.wavernn_config,
+                              server_config.use_cuda)
 
-    def load_tts(self, config_path, model_path, model_file, model_config, use_cuda):
-        if not os.path.isabs(model_path):
-            model_path = os.path.join(os.path.dirname(config_path), model_path)
-        tts_config = os.path.join(model_path, model_config)
-        self.model_file = os.path.join(model_path, model_file)
+    def load_tts(self, checkpoint_file, tts_config, use_cuda):
         print(" > Loading TTS model ...")
         print(" | > model config: ", tts_config)
-        print(" | > model file: ", model_file)
+        print(" | > model file: ", checkpoint_file)
         self.tts_config = load_config(tts_config)
         self.use_phonemes = self.tts_config.use_phonemes
         self.ap = AudioProcessor(**self.tts_config.audio)
@@ -50,9 +50,9 @@ class Synthesizer(object):
         self.tts_model = setup_model(self.input_size, self.tts_config)
         # load model state
         if use_cuda:
-            cp = torch.load(self.model_file)
+            cp = torch.load(checkpoint_file)
         else:
-            cp = torch.load(self.model_file, map_location=lambda storage, loc: storage)
+            cp = torch.load(checkpoint_file, map_location=lambda storage, loc: storage)
         # load the model
         self.tts_model.load_state_dict(cp['model'])
         if use_cuda:

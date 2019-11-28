@@ -13,7 +13,7 @@ Development server:
 5. # Download model package
 6. unzip model.zip
 7. pip install -U ./TTS*.whl
-8. python -m TTS.server.server -c ./server.conf
+8. python -m TTS.server.server
 
 You can now browse to http://localhost:5002
 
@@ -28,7 +28,7 @@ Running with nginx/uwsgi:
 7. pip install -U ./TTS*.whl
 8. cp tts_site_nginx /etc/nginx/sites-enabled/default
 9. service nginx restart
-10. uwsgi --ini uwsgi.ini --env TTS_SERVER_CONFIG=`pwd`/server.conf
+10. uwsgi --ini uwsgi.ini
 
 You can now browse to http://localhost:80 (edit the port in /etc/nginx/sites-enabled/tts_site_nginx).
 Configure number of workers (number of requests that will be processed in parallel) in uwsgi.ini, `processes` setting.
