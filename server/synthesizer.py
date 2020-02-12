@@ -33,9 +33,10 @@ class Synthesizer(object):
         if self.config.wavernn_lib_path:
             self.load_wavernn(self.config.wavernn_lib_path, self.config.wavernn_file,
                               self.config.wavernn_config, self.config.use_cuda)
-        if self.config.pwgan_lib_path:
-            self.load_pwgan(self.config.pwgan_lib_path, self.config.pwgan_file,
-                            self.config.pwgan_config, self.config.use_cuda)
+        if self.config.pwgan_file:
+            self.load_pwgan(self.config.pwgan_file,
+                            self.config.pwgan_config,
+                            self.config.use_cuda)
 
     def load_tts(self, tts_checkpoint, tts_config, use_cuda):
         print(" > Loading TTS model ...")
@@ -100,10 +101,10 @@ class Synthesizer(object):
             self.wavernn.cuda()
         self.wavernn.eval()
 
-    def load_pwgan(self, lib_path, model_file, model_config, use_cuda):
-        sys.path.append(lib_path) # set this if ParallelWaveGAN is not installed globally
+    def load_pwgan(self, model_file, model_config, use_cuda):
         #pylint: disable=import-outside-toplevel
         from parallel_wavegan.models import ParallelWaveGANGenerator
+        from parallel_wavegan.utils.audio import AudioProcessor as AudioProcessorVocoder
         print(" > Loading PWGAN model ...")
         print(" | > model config: ", model_config)
         print(" | > model file: ", model_file)
@@ -112,6 +113,7 @@ class Synthesizer(object):
         self.pwgan = ParallelWaveGANGenerator(**self.pwgan_config["generator_params"])
         self.pwgan.load_state_dict(torch.load(model_file, map_location="cpu")["model"]["generator"])
         self.pwgan.remove_weight_norm()
+        self.pwgan_ap = AudioProcessorVocoder(**self.pwgan_config["audio"])
         if use_cuda:
             self.pwgan.cuda()
         self.pwgan.eval()
@@ -122,7 +124,7 @@ class Synthesizer(object):
         self.ap.save_wav(wav, path)
 
     def split_into_sentences(self, text):
-        text = " " + text + "  "
+        text = " " + text + " <stop>"
         text = text.replace("\n", " ")
         text = re.sub(prefixes, "\\1<prd>", text)
         text = re.sub(websites, "<prd>\\1", text)
@@ -149,7 +151,7 @@ class Synthesizer(object):
         text = text.replace("<prd>", ".")
         sentences = text.split("<stop>")
         sentences = sentences[:-1]
-        sentences = [s.strip() for s in sentences]
+        sentences = list(filter(None, [s.strip() for s in sentences]))
         return sentences
 
     def tts(self, text):
@@ -168,9 +170,11 @@ class Synthesizer(object):
             postnet_output, decoder_output, _ = parse_outputs(
                 postnet_output, decoder_output, alignments)
 
-            if self.wavernn:
-                postnet_output = postnet_output[0].data.cpu().numpy()
-                wav = self.wavernn.generate(torch.FloatTensor(postnet_output.T).unsqueeze(0).cuda(), batched=self.config.is_wavernn_batched, target=11000, overlap=550)
+            if self.pwgan:
+                input_tensor = torch.FloatTensor(postnet_output.T).unsqueeze(0)
+                if self.use_cuda:
+                    input_tensor.cuda()
+                wav = self.pwgan.inference(input_tensor, hop_size=self.pwgan_ap.hop_length).data.cpu().numpy()
             else:
                 wav = inv_spectrogram(postnet_output, self.ap, self.tts_config)
             # trim silence

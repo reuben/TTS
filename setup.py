@@ -12,8 +12,10 @@ import setuptools.command.build_py
 
 
 parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
-parser.add_argument('--checkpoint', type=str, help='Path to checkpoint file to embed in wheel.')
-parser.add_argument('--model_config', type=str, help='Path to model configuration file to embed in wheel.')
+parser.add_argument('--tts_checkpoint', type=str, help='Path to TTS checkpoint file to embed in wheel.')
+parser.add_argument('--tts_model_config', type=str, help='Path to TTS model configuration file to embed in wheel.')
+parser.add_argument('--pwgan_checkpoint', type=str, help='Path to PWGAN model configuration file to embed in wheel.')
+parser.add_argument('--pwgan_model_config', type=str, help='Path to PWGAN model configuration file to embed in wheel.')
 args, unknown_args = parser.parse_known_args()
 
 # Remove our arguments from argv so that setuptools doesn't see them
@@ -58,15 +60,25 @@ class develop(setuptools.command.develop.develop):
 # The documentation for this feature is in server/README.md
 package_data = ['server/templates/*']
 
-if 'bdist_wheel' in unknown_args and args.checkpoint and args.model_config:
+if 'bdist_wheel' in unknown_args and args.tts_checkpoint and args.tts_model_config:
     print('Embedding model in wheel file...')
     model_dir = os.path.join('server', 'model')
-    os.makedirs(model_dir, exist_ok=True)
-    embedded_checkpoint_path = os.path.join(model_dir, 'checkpoint.pth.tar')
-    shutil.copy(args.checkpoint, embedded_checkpoint_path)
-    embedded_config_path = os.path.join(model_dir, 'config.json')
-    shutil.copy(args.model_config, embedded_config_path)
+    tts_dir = os.path.join(model_dir, 'tts')
+    os.makedirs(tts_dir, exist_ok=True)
+    embedded_checkpoint_path = os.path.join(tts_dir, 'checkpoint.pth.tar')
+    shutil.copy(args.tts_checkpoint, embedded_checkpoint_path)
+    embedded_config_path = os.path.join(tts_dir, 'config.json')
+    shutil.copy(args.tts_model_config, embedded_config_path)
     package_data.extend([embedded_checkpoint_path, embedded_config_path])
+
+    if args.pwgan_checkpoint and args.pwgan_model_config:
+        pwgan_dir = os.path.join(model_dir, 'pwgan')
+        os.makedirs(pwgan_dir, exist_ok=True)
+        embedded_pwgan_checkpoint_path = os.path.join(pwgan_dir, 'checkpoint.pkl')
+        shutil.copy(args.pwgan_checkpoint, embedded_pwgan_checkpoint_path)
+        embedded_pwgan_config_path = os.path.join(pwgan_dir, 'config.yml')
+        shutil.copy(args.pwgan_model_config, embedded_pwgan_config_path)
+        package_data.extend([embedded_pwgan_checkpoint_path, embedded_pwgan_config_path])
 
 setup(
     name='TTS',
@@ -79,6 +91,7 @@ setup(
     package_data={
         'TTS': package_data,
     },
+    zip_safe=False,
     project_urls={
         'Documentation': 'https://github.com/mozilla/TTS/wiki',
         'Tracker': 'https://github.com/mozilla/TTS/issues',
@@ -90,23 +103,19 @@ setup(
         'develop': develop,
     },
     install_requires=[
-        "scipy>=0.19.0",
-        "torch>=0.4.1",
+        "scipy==1.4.1",
+        "torch==1.4.0",
         "numpy==1.15.4",
-        "librosa==0.6.2",
+        "librosa==0.7.2",
         "unidecode==0.4.20",
-        "attrdict",
-        "tensorboardX",
-        "matplotlib",
-        "Pillow",
-        "flask",
-        # "lws",
-        "tqdm",
-        "bokeh==1.4.0",
-        "soundfile",
+        "attrdict==2.0.1",
+        "flask==1.1.1",
+        "PyYAML==5.3",
         "phonemizer @ https://github.com/bootphon/phonemizer/tarball/master",
+        "parallel_wavegan @ https://github.com/reuben/ParallelWaveGAN/tarball/server-pkg-ljspeech-fwd-attn-pwgan",
     ],
     dependency_links=[
         "http://github.com/bootphon/phonemizer/tarball/master#egg=phonemizer-1.0.1"
+        "https://github.com/reuben/ParallelWaveGAN/tarball/server-pkg-ljspeech-linear-attn-pwgan#egg=parallel_wavegan-0.2.8"
     ]
 )
