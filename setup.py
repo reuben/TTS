@@ -111,11 +111,7 @@ setup(
         "attrdict==2.0.1",
         "flask==1.1.1",
         "PyYAML==5.3",
-        "phonemizer @ https://github.com/bootphon/phonemizer/tarball/master",
+        "phonemizer==2.1",
         "parallel_wavegan @ https://github.com/reuben/ParallelWaveGAN/tarball/server-pkg-ljspeech-fwd-attn-pwgan",
     ],
-    dependency_links=[
-        "http://github.com/bootphon/phonemizer/tarball/master#egg=phonemizer-1.0.1"
-        "https://github.com/reuben/ParallelWaveGAN/tarball/server-pkg-ljspeech-linear-attn-pwgan#egg=parallel_wavegan-0.2.8"
-    ]
 )
